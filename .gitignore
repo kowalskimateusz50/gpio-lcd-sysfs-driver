@@ -1,0 +1,13 @@
+.Module.symvers.cmd
+.gpio-sysfs.ko.cmd
+.gpio-sysfs.mod.cmd
+.gpio-sysfs.mod.o.cmd
+.gpio-sysfs.o.cmd
+.modules.order.cmd
+Module.symvers
+gpio-sysfs.ko
+gpio-sysfs.mod
+gpio-sysfs.mod.c
+gpio-sysfs.mod.o
+gpio-sysfs.o
+modules.order
