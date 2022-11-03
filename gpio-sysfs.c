@@ -26,6 +26,8 @@ struct gpiodrv_private_data
 {
   int total_devices;
   struct class *class_gpio;
+  struct device** dev;
+
 };
 /*Definition variable of private data structure*/
 struct gpiodrv_private_data gpiodrv_private_data;
@@ -174,6 +176,15 @@ static const struct attribute_group* gpio_attr_groups[] =
 /* Remove function of GPIO driver */
 int gpio_remove(struct platform_device *gpio_dev)
 {
+  int i;
+
+  dev_info(&gpio_dev -> dev, "Remove function called\n");
+  
+  for(i = 0; i < gpiodrv_private_data.total_devices; i++)
+  {
+    device_unregister(gpiodrv_private_data.dev[i]);
+  }
+
   return 0;
 }
 
@@ -201,11 +212,22 @@ int gpio_probe(struct platform_device *gpio_dev)
   /* Structure of device private data */
   struct gpiodev_private_data *dev_data;
 
-  /* Definition of structure for receive information from device_create_with_groups function */
-  struct device *dev_sysfs;
+  /* Extracting amount of child nodes */
+  gpiodrv_private_data.total_devices = of_get_child_count(parent);
+
+  if(!gpiodrv_private_data.total_devices)
+  {
+    dev_info(dev, "No device found\n");
+    return -EINVAL;
+  }
+
+  dev_info(dev, "Total devices found = %d\n", gpiodrv_private_data.total_devices);
+
+  gpiodrv_private_data.dev = devm_kzalloc(dev, sizeof(struct device*)*gpiodrv_private_data.total_devices, GFP_KERNEL);
 
   for_each_available_child_of_node(parent, child)
   {
+    i = 0;
     /* 1. Dynamically allocate memory for the device private data */
     dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
     if(!dev_data)
@@ -250,15 +272,15 @@ int gpio_probe(struct platform_device *gpio_dev)
   }
 
   /*4. Create devices under /sys/class/bone_gpios */
-  dev_sysfs = device_create_with_groups(gpiodrv_private_data.class_gpio, dev, 0, dev_data, gpio_attr_groups, dev_data -> label);
+  gpiodrv_private_data.dev[i] = device_create_with_groups(gpiodrv_private_data.class_gpio, dev, 0, dev_data, gpio_attr_groups, dev_data -> label);
 
   /*4.e Error handling for device_create_with_groups function */
-  if(IS_ERR(dev_sysfs))
+  if(IS_ERR(gpiodrv_private_data.dev[i]))
   {
     dev_err(dev, "Error during device creation\n");
-    return PTR_ERR(dev_sysfs);
+    return PTR_ERR(gpiodrv_private_data.dev[i]);
   }
-/*iteration number of devices */
+  /*iteration number of devices */
   i++;
 
   return 0;
