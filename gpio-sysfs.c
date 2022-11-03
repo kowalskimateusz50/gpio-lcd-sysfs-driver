@@ -8,7 +8,8 @@
 #include <linux/slab.h>
 #include <linux/mod_devicetable.h>
 #include <linux/of.h>
-#include<linux/of_device.h>
+#include <linux/of_device.h>
+#include <linux/gpio/consumer.h>
 
 
 #define RDONLY 0x1
@@ -24,6 +25,7 @@
 struct gpiodev_private_data
 {
   char label[20];
+  struct gpio_desc *desc;
 };
 
 /* Driver private data structure */
@@ -51,6 +53,9 @@ int gpio_probe(struct platform_device *gpio_dev)
   /*Definition of iterator */
   int i;
 
+  /*Definition of error's return value */
+  int ret;
+
   /* Parent device node variable definition */
   struct device_node *parent = dev -> of_node;
 
@@ -59,6 +64,7 @@ int gpio_probe(struct platform_device *gpio_dev)
 
   /* Structure of device private data */
   struct gpiodev_private_data *dev_data;
+
 
   for_each_available_child_of_node(parent, child)
   {
@@ -82,6 +88,29 @@ int gpio_probe(struct platform_device *gpio_dev)
       dev_info(dev, "GPIO label = %s\n", dev_data -> label);
     }
   }
+
+  /*2. Extract data from gpio */
+  dev_data -> desc = devm_fwnode_get_gpiod_from_child(dev, "bone", &child-> fwnode, GPIOD_ASIS,  dev_data -> label);
+
+  /*2.e Erorr handling */
+  if(IS_ERR(dev_data -> desc))
+  {
+    ret = PTR_ERR(dev_data -> desc);
+    if(ret == -ENOENT)
+    {
+      dev_err(dev,"No GPIO's has been assigned to the requested function and/or index\n");
+    }
+    return ret;
+  }
+
+  /*3. Set the gpio direction for output */
+  ret = gpiod_direction_output(dev_data-> desc, 0);
+  if(ret)
+  {
+    dev_err(dev, "Gpio direction set failed\n");
+    return ret;
+  }
+
 
 /*iteration number of devices */
   i++;
@@ -108,8 +137,6 @@ struct platform_driver gpio_platform_driver = {
 
 /* Variable of private data structure*/
 struct gpiodrv_private_data gpiodrv_private_data;
-
-
 
 /* Module initialization fucntion */
 static int __init gpio_init(void)
