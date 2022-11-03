@@ -11,13 +11,6 @@
 #include <linux/of_device.h>
 #include <linux/gpio/consumer.h>
 
-
-#define RDONLY 0x1
-#define WRONLY 0x10
-#define RDWR   0x11
-
-#define MAX_DEVICES 10
-
 #undef pr_fmt
 #define pr_fmt(fmt) "%s :" fmt, __func__
 
@@ -40,27 +33,115 @@ struct gpiodrv_private_data gpiodrv_private_data;
 /* Attribute show and store methods for direction attribute */
 ssize_t direction_show(struct device *dev, struct device_attribute *attr,char *buf)
 {
-  return 0;
+  /*Extracting driver data from device structure */
+  struct gpiodev_private_data *dev_data = dev_get_drvdata(dev);
+
+  /* Definition of direction temp variable */
+  int dir;
+
+  /*Buffer for save value for direction */
+  char *buffer;
+
+  /* Extracting direction from desc field  */
+
+  dir = gpiod_get_direction(dev_data -> desc);
+
+  /* if dir = 0 then show "out", if dir = 1 then show "in", if dir has an negative value return error */
+  if(dir == 0)
+  {
+    buffer = "out";
+  }
+  else if (dir == 1)
+  {
+    buffer = "in";
+  }
+  else
+  {
+    return dir;
+  }
+
+  return sprintf(buf, "%s\n", buffer);
+
 }
 ssize_t direction_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-  return 0;
+  /*Extracting driver data from device structure */
+  struct gpiodev_private_data *dev_data = dev_get_drvdata(dev);
+
+  /* Return error code variable definition */
+  int ret;
+
+  /* String from user space comparision */
+
+  if(sysfs_streq(buf, "in"))
+  {
+    ret = gpiod_direction_input(dev_data -> desc);
+  }
+  else if(sysfs_streq(buf, "out"))
+  {
+    ret = gpiod_direction_output(dev_data -> desc, 0);
+  }
+  else
+  {
+    ret = -EINVAL;
+  }
+  if(ret)
+  {
+    return ret;
+  }
+    return count;
 }
 
 /* Attribute show and store methods for value attribute */
 ssize_t value_show(struct device *dev, struct device_attribute *attr,char *buf)
 {
-  return 0;
+  /*Extracting driver data from device structure */
+  struct gpiodev_private_data *dev_data = dev_get_drvdata(dev);
+
+  /* Variable for current state of gpio */
+  int value;
+
+  /* Read actual value from gpio */
+  value = gpiod_get_value(dev_data -> desc);
+
+  /* Return value to user space */
+  return sprintf(buf, "%d\n", value);
 }
 ssize_t value_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-  return 0;
+  /*Extracting driver data from device structure */
+  struct gpiodev_private_data *dev_data = dev_get_drvdata(dev);
+
+  /* Definition of variable that store value for gpio */
+  long value;
+
+  /* Variable for return value of error */
+  int ret;
+
+  /* Converting char* value from buffer to long as an output to GPIO */
+  ret = kstrtol(buf, 0, &value);
+
+  /* Error checking after convert function */
+  if(ret)
+  {
+    return ret;
+  }
+
+  /*Write value to a gpio output*/
+  gpiod_set_value(dev_data -> desc,value);
+
+  return count;
 }
 
 /* Attribute show and store methods for label attribute */
 ssize_t label_show(struct device *dev, struct device_attribute *attr,char *buf)
 {
-  return 0;
+  /*Extracting driver data from device structure */
+  struct gpiodev_private_data *dev_data = dev_get_drvdata(dev);
+
+
+  /* Return label to user space */
+  return sprintf(buf, "%s\n", dev_data->label);
 }
 
 /*Definition variable of direction device attribute */
