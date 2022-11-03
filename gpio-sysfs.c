@@ -34,6 +34,61 @@ struct gpiodrv_private_data
   int total_devices;
   struct class *class_gpio;
 };
+/*Definition variable of private data structure*/
+struct gpiodrv_private_data gpiodrv_private_data;
+
+/* Attribute show and store methods for direction attribute */
+ssize_t direction_show(struct device *dev, struct device_attribute *attr,char *buf)
+{
+  return 0;
+}
+ssize_t direction_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+  return 0;
+}
+
+/* Attribute show and store methods for value attribute */
+ssize_t value_show(struct device *dev, struct device_attribute *attr,char *buf)
+{
+  return 0;
+}
+ssize_t value_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+  return 0;
+}
+
+/* Attribute show and store methods for label attribute */
+ssize_t label_show(struct device *dev, struct device_attribute *attr,char *buf)
+{
+  return 0;
+}
+
+/*Definition variable of direction device attribute */
+static DEVICE_ATTR_RW(direction);
+static DEVICE_ATTR_RW(value);
+static DEVICE_ATTR_RO(label);
+
+/*Definition arrays of attributes */
+static struct attribute *gpio_attrs[] =
+{
+  &dev_attr_direction.attr,
+  &dev_attr_value.attr,
+  &dev_attr_label.attr,
+  NULL
+};
+
+/*Definition of group variable of attributes */
+static struct attribute_group gpio_attr_group =
+{
+  .attrs = gpio_attrs
+};
+
+/*Definition of array attribute group */
+static const struct attribute_group* gpio_attr_groups[] =
+{
+  &gpio_attr_group,
+  NULL
+};
 
 /* Remove function of GPIO driver */
 int gpio_remove(struct platform_device *gpio_dev)
@@ -65,6 +120,8 @@ int gpio_probe(struct platform_device *gpio_dev)
   /* Structure of device private data */
   struct gpiodev_private_data *dev_data;
 
+  /* Definition of structure for receive information from device_create_with_groups function */
+  struct device *dev_sysfs;
 
   for_each_available_child_of_node(parent, child)
   {
@@ -111,7 +168,15 @@ int gpio_probe(struct platform_device *gpio_dev)
     return ret;
   }
 
+  /*4. Create devices under /sys/class/bone_gpios */
+  dev_sysfs = device_create_with_groups(gpiodrv_private_data.class_gpio, dev, 0, dev_data, gpio_attr_groups, dev_data -> label);
 
+  /*4.e Error handling for device_create_with_groups function */
+  if(IS_ERR(dev_sysfs))
+  {
+    dev_err(dev, "Error during device creation\n");
+    return PTR_ERR(dev_sysfs);
+  }
 /*iteration number of devices */
   i++;
 
@@ -134,9 +199,6 @@ struct platform_driver gpio_platform_driver = {
   }
 
 };
-
-/* Variable of private data structure*/
-struct gpiodrv_private_data gpiodrv_private_data;
 
 /* Module initialization fucntion */
 static int __init gpio_init(void)
