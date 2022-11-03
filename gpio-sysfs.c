@@ -42,6 +42,50 @@ int gpio_remove(struct platform_device *gpio_dev)
 /* Probe function of GPIO driver */
 int gpio_probe(struct platform_device *gpio_dev)
 {
+  /*Structure of device */
+  struct device *dev = &gpio_dev -> dev;
+
+  /*Placeholder for name of property */
+  const char *name;
+
+  /*Definition of iterator */
+  int i;
+
+  /* Parent device node variable definition */
+  struct device_node *parent = dev -> of_node;
+
+  /* Child device node variable definition */
+  struct device_node *child = NULL;
+
+  /* Structure of device private data */
+  struct gpiodev_private_data *dev_data;
+
+  for_each_available_child_of_node(parent, child)
+  {
+    /* 1. Dynamically allocate memory for the device private data */
+    dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
+    if(!dev_data)
+    {
+      /* 1e. Dynamically allocate memory for the device private data */
+      dev_err(dev, "Cannot allocate memory\n");
+      return -ENOMEM;
+    }
+    /*1.f Extracting label data from device tree */
+    if(of_property_read_string(child, "label", &name))
+    {
+      dev_warn(dev, "Missing label information\n");
+      snprintf(dev_data -> label, sizeof(dev_data -> label), "unkngpio%d", i);
+    }
+    else
+    {
+      strcpy(dev_data-> label, name);
+      dev_info(dev, "GPIO label = %s\n", dev_data -> label);
+    }
+  }
+
+/*iteration number of devices */
+  i++;
+
   return 0;
 }
 
@@ -56,7 +100,7 @@ struct platform_driver gpio_platform_driver = {
   .probe = gpio_probe,
   .remove = gpio_remove,
   .driver = {
-    .name = "bone-gpio-ysfs",
+    .name = "bone-gpio-sysfs",
     .of_match_table = of_match_ptr(gpiodrv_dt_match)
   }
 
