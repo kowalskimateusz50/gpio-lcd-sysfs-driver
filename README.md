@@ -1,4 +1,4 @@
-GPIO sysfs driver
+------------------------------------ GPIO Sysfs LCD Driver -------------------------------------
 
 The goal of project is to handle GPIOs of the hardware through sysfs interface
 
