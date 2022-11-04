@@ -9,3 +9,4 @@ The driver should support the below functionality
 attribute 1) direction: used to configure the gpio direction possible values: ‘in’ and ‘out’ mode : (read /write)
 attribute 2) value: used to enquire the state of the gpio or to write a new value to the gpio possible values : 0 and 1 (read/write)
 attribute 3) label: used to enquire label of the gpio (read only )
+4)Handling of 16x2 1602A LCD Display
