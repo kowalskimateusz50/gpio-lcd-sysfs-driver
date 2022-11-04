@@ -179,7 +179,7 @@ int gpio_remove(struct platform_device *gpio_dev)
   int i;
 
   dev_info(&gpio_dev -> dev, "Remove function called\n");
-  
+
   for(i = 0; i < gpiodrv_private_data.total_devices; i++)
   {
     device_unregister(gpiodrv_private_data.dev[i]);
@@ -198,7 +198,7 @@ int gpio_probe(struct platform_device *gpio_dev)
   const char *name;
 
   /*Definition of iterator */
-  int i;
+  int i = 0;
 
   /*Definition of error's return value */
   int ret;
@@ -223,11 +223,10 @@ int gpio_probe(struct platform_device *gpio_dev)
 
   dev_info(dev, "Total devices found = %d\n", gpiodrv_private_data.total_devices);
 
-  gpiodrv_private_data.dev = devm_kzalloc(dev, sizeof(struct device*)*gpiodrv_private_data.total_devices, GFP_KERNEL);
+  gpiodrv_private_data.dev = devm_kzalloc(dev, sizeof(struct device*) * gpiodrv_private_data.total_devices, GFP_KERNEL);
 
   for_each_available_child_of_node(parent, child)
   {
-    i = 0;
     /* 1. Dynamically allocate memory for the device private data */
     dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
     if(!dev_data)
@@ -247,43 +246,43 @@ int gpio_probe(struct platform_device *gpio_dev)
       strcpy(dev_data-> label, name);
       dev_info(dev, "GPIO label = %s\n", dev_data -> label);
     }
-  }
 
-  /*2. Extract data from gpio */
-  dev_data -> desc = devm_fwnode_get_gpiod_from_child(dev, "bone", &child-> fwnode, GPIOD_ASIS,  dev_data -> label);
 
-  /*2.e Erorr handling */
-  if(IS_ERR(dev_data -> desc))
-  {
-    ret = PTR_ERR(dev_data -> desc);
-    if(ret == -ENOENT)
+    /*2. Extract data from gpio */
+    dev_data -> desc = devm_fwnode_get_gpiod_from_child(dev, "bone", &child-> fwnode, GPIOD_ASIS,  dev_data -> label);
+
+    /*2.e Erorr handling */
+    if(IS_ERR(dev_data -> desc))
     {
-      dev_err(dev,"No GPIO's has been assigned to the requested function and/or index\n");
+      ret = PTR_ERR(dev_data -> desc);
+      if(ret == -ENOENT)
+      {
+        dev_err(dev,"No GPIO's has been assigned to the requested function and/or index\n");
+      }
+      return ret;
     }
-    return ret;
+
+    /*3. Set the gpio direction for output */
+    ret = gpiod_direction_output(dev_data-> desc, 0);
+    if(ret)
+    {
+      dev_err(dev, "Gpio direction set failed\n");
+      return ret;
+    }
+
+    /*4. Create devices under /sys/class/bone_gpios */
+    gpiodrv_private_data.dev[i] = device_create_with_groups(gpiodrv_private_data.class_gpio, dev, 0, dev_data, gpio_attr_groups, dev_data -> label);
+
+    /*4.e Error handling for device_create_with_groups function */
+    if(IS_ERR(gpiodrv_private_data.dev[i]))
+    {
+      dev_err(dev, "Error during device creation\n");
+      return PTR_ERR(gpiodrv_private_data.dev[i]);
+    }
+    /*iteration number of devices */
+    i++;
   }
-
-  /*3. Set the gpio direction for output */
-  ret = gpiod_direction_output(dev_data-> desc, 0);
-  if(ret)
-  {
-    dev_err(dev, "Gpio direction set failed\n");
-    return ret;
-  }
-
-  /*4. Create devices under /sys/class/bone_gpios */
-  gpiodrv_private_data.dev[i] = device_create_with_groups(gpiodrv_private_data.class_gpio, dev, 0, dev_data, gpio_attr_groups, dev_data -> label);
-
-  /*4.e Error handling for device_create_with_groups function */
-  if(IS_ERR(gpiodrv_private_data.dev[i]))
-  {
-    dev_err(dev, "Error during device creation\n");
-    return PTR_ERR(gpiodrv_private_data.dev[i]);
-  }
-  /*iteration number of devices */
-  i++;
-
-  return 0;
+    return 0;
 }
 
 /* Match table for device compatible matching */
